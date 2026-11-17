@@ -64,9 +64,20 @@ function SiliconDie({ width, depth, fade = false }: { width: number; depth: numb
 function TapeStage({ params, picked, eject }: { params: Parameters; picked: boolean; eject: number }) {
   const dieW = params.dieWidth;
   const dieH = params.dieHeight;
-  const spacingX = dieW + .16;
-  const spacingZ = dieH + .16;
   const layout = getSceneLayout(params);
+  const gridStepX = Math.min(dieW + .42, layout.tapeRadius * .62);
+  const gridStepZ = Math.min(dieH + .42, layout.tapeRadius * .62);
+  const dieY = .12;
+  const lift = smooth(eject);
+  const pinLift = lift * .22;
+  const armLift = lift * .14;
+  const pinOffsets = [
+    [-dieW * .18, -dieH * .18],
+    [dieW * .18, -dieH * .18],
+    [-dieW * .18, dieH * .18],
+    [dieW * .18, dieH * .18],
+  ];
+
   return <group position={[layout.waferX, 0, 0]}>
     <mesh position={[0, -.44, 0]} castShadow receiveShadow>
       <cylinderGeometry args={[layout.tapeRadius, layout.tapeRadius, .28, 64]} />
@@ -80,17 +91,44 @@ function TapeStage({ params, picked, eject }: { params: Parameters; picked: bool
       <torusGeometry args={[layout.tapeRadius + .14, .18, 10, 60]} />
       <meshStandardMaterial color="#a4b4c4" metalness={.83} roughness={.26} />
     </mesh>
+
     {[-1, 0, 1].flatMap(ix => [-1, 0, 1].map(iz => {
       if (ix === 0 && iz === 0) return null;
-      return <mesh key={`${ix}-${iz}`} castShadow position={[ix * spacingX * .63, .05, iz * spacingZ * .63]}>
-        <boxGeometry args={[dieW * .55, .18, dieH * .55]} />
-        <meshStandardMaterial color="#394e63" metalness={.46} roughness={.32} />
-      </mesh>;
+      return <group key={`${ix}-${iz}`} position={[ix * gridStepX, dieY, iz * gridStepZ]}>
+        <SiliconDie width={dieW} depth={dieH} fade />
+      </group>;
     }))}
-    {!picked && <mesh position={[0, -.03 + eject * .20, 0]} rotation={[0, 0, 0]}>
-      <cylinderGeometry args={[.09, .09, .7 + eject * .5, 18]} />
-      <meshStandardMaterial color="#c4d2dc" metalness={.86} roughness={.26} />
-    </mesh>}
+
+    <group position={[0, -.005, 0]}>
+      {[-1, 1].flatMap(ix => [-1, 1].map(iz => <group key={`pick-${ix}-${iz}`} position={[ix * (dieW / 2 + .10), 0, iz * (dieH / 2 + .10)]}>
+        <mesh><boxGeometry args={[.18, .012, .03]} /><meshBasicMaterial color="#79f0f4" /></mesh>
+        <mesh><boxGeometry args={[.03, .012, .18]} /><meshBasicMaterial color="#79f0f4" /></mesh>
+      </group>))}
+    </group>
+
+    <group position={[0, -.62 + armLift, 0]}>
+      <mesh position={[-dieW * .32 - .95, 0, 0]} castShadow>
+        <boxGeometry args={[1.75, .16, .42]} />
+        <meshStandardMaterial color="#667989" metalness={.78} roughness={.28} />
+      </mesh>
+      <mesh position={[-dieW * .23 - .2, .12, 0]} castShadow>
+        <boxGeometry args={[dieW * .56 + 1.2, .08, .22]} />
+        <meshStandardMaterial color="#a7bac7" metalness={.82} roughness={.24} />
+      </mesh>
+      <mesh position={[0, .20 + pinLift * .4, 0]} castShadow>
+        <boxGeometry args={[Math.max(.72, dieW * .54), .08, Math.max(.72, dieH * .54)]} />
+        <meshStandardMaterial color="#c8d6df" metalness={.85} roughness={.21} />
+      </mesh>
+      {pinOffsets.map(([x, z], i) => <mesh key={i} position={[x, .39 + pinLift, z]} castShadow>
+        <cylinderGeometry args={[.065, .065, .5 + pinLift * .9, 16]} />
+        <meshStandardMaterial color="#dfe8ef" metalness={.88} roughness={.2} />
+      </mesh>)}
+      <mesh position={[-dieW * .85 - 1.1, -.08, 0]}>
+        <cylinderGeometry args={[.34, .34, .4, 20]} />
+        <meshStandardMaterial color="#334658" metalness={.62} roughness={.33} />
+      </mesh>
+    </group>
+
     <mesh position={[0, -.76, 0]}>
       <cylinderGeometry args={[1.6, 1.7, .34, 32]} />
       <meshStandardMaterial color="#101d2b" metalness={.42} roughness={.45} />
@@ -316,25 +354,43 @@ function getDiePose(stage: Stage, progress: number, p: Parameters, r: Results) {
   return { x: px, y: bondedY, z: pz };
 }
 
+function getColletPose(stage: Stage, progress: number, p: Parameters, r: Results) {
+  const layout = getSceneLayout(p);
+  const diePose = getDiePose(stage, progress, p, r);
+  const ix = STAGES.findIndex(s => s.id === stage);
+  if (ix === 1 && progress < .30) {
+    return {
+      x: layout.waferX,
+      y: lerp(3.2, .22, smooth(progress / .30)),
+      z: 0,
+    };
+  }
+  return diePose;
+}
+
 function Assembly({ p, r, stage, progress, viewMode }: { p: Parameters; r: Results; stage: Stage; progress: number; viewMode: ViewMode }) {
   const stageIndex = STAGES.findIndex(s => s.id === stage);
   const pose = getDiePose(stage, progress, p, r);
+  const colletPose = getColletPose(stage, progress, p, r);
   const picked = stageIndex > 1 || (stageIndex === 1 && progress > .30);
   const deposited = stageIndex > 0 ? 1 : smooth((progress - .19) / .64);
   const spread = stageIndex < 3 ? 0 : stageIndex === 3 ? smooth((progress - .45) / .5) : 1;
   const pasteCured = stageIndex > 4 || stageIndex === 4 && progress > .75;
   const dieTilt = spread > .7 ? r.tilt * Math.PI / 180 * 7 : 0;
+  const showCollet = stageIndex === 1 || stageIndex === 2 || (stageIndex === 3 && progress < .92);
+  const eject = stage === 'pickup' ? smooth(progress / .35) : 0;
+
   return <group>
     <Ground />
     <Substrate p={p} />
-    <TapeStage params={p} picked={picked} eject={stage === 'pickup' ? smooth(progress / .35) : 0} />
+    <TapeStage params={p} picked={picked} eject={eject} />
     {stage === 'dispense' && <Nozzle p={p} progress={progress} />}
     {deposited > 0 && spread < .002 && <DispensedPaste p={p} progress={deposited} />}
     {spread > .002 && <SpreadPaste p={p} r={r} fraction={spread} cured={pasteCured} transparent={viewMode === 'transparent'} />}
     <group position={[pose.x, pose.y, pose.z]} rotation={[0, 0, dieTilt]}>
       <SiliconDie width={p.dieWidth} depth={p.dieHeight} fade={viewMode === 'transparent' && spread > .7} />
     </group>
-    {(stageIndex === 1 || stageIndex === 2 || stageIndex === 3 && progress < .92) && picked && <Collet x={pose.x} y={pose.y} z={pose.z} />}
+    {showCollet && <Collet x={colletPose.x} y={colletPose.y} z={colletPose.z} />}
     {stage === 'align' && <AlignmentOverlay p={p} progress={progress} />}
     {stage === 'cure' && <CureChamber p={p} progress={progress} />}
     {stageIndex >= 3 && <group position={[getSceneLayout(p).substrateX, PAD_HEIGHT + .02, 0]}>
