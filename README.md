@@ -12,7 +12,7 @@ A fully client-side, interactive 3D **educational model** of conventional face-u
 - Controls for die dimensions, substrate, viscosity, adhesive volume, nozzle gap, deposit imbalance, alignment offset, bond force, BLT target and curing parameters
 - Six preset scenarios: nominal, insufficient paste, excess paste, misalignment, tilt, potential voids
 - Derived BLT, adhesive coverage, fillet, placement error, tilt, and hypothetical void/delamination indicators
-- CSV report export
+- On-screen PASS/FAIL inspection verdict with every failed criterion explained; no CSV export
 - Responsive layout and no external 3D models, databases or paid APIs
 
 ## Run locally
@@ -50,7 +50,7 @@ This is a **teaching visualization**, not a process-qualification tool. Adhesive
 - The die active surface remains **face up** throughout conventional epoxy bonding; this is not flip-chip solder paste.
 - For a die with area A in mm² and paste volume V in nL, an equivalent unspread film thickness is V/A µm. The model splits deposited volume between an estimated adhesive film and fillet for an internally consistent educational approximation. The visual thickness is intentionally exaggerated so the adhesive can be seen.
 - Coverage, voids, tilt, bleed and delamination risks use transparent, *unvalidated heuristic formulas* in `lib/simulation.ts`.
-- Pass/Warning/Fail thresholds are demonstration defaults and **not** industry acceptance criteria; they must not be used to make real manufacturing decisions.
+- PASS/FAIL thresholds are demonstration defaults and **not** industry acceptance criteria; they must not be used to make real manufacturing decisions.
 - The thermal cure profiles are approximate educational presets, not qualified adhesive manufacturer's recipes. The alternative UV example is explicitly limited to a UV-compatible, edge-accessible adhesive; UV is **not** portrayed as curing through opaque silicon.
 - The animation runs on an accelerated illustrative time base, unrelated to physical machine cycle-time calibration.
 
@@ -64,7 +64,7 @@ app/
   layout.tsx               App HTML and metadata
   globals.css              Industrial dashboard UI
 components/
-  Simulator.tsx            UI, control system, timeline and report export
+  Simulator.tsx            UI, control system, timeline and inspection findings
   SimulationScene.tsx      Procedural 3D wafer/collet/nozzle/die/paste and curing
 lib/
   simulation.ts            Stage definitions, presets, dimensioned heuristic model
@@ -73,3 +73,9 @@ lib/
 ## Known tradeoffs
 
 This project fetches normal npm dependencies during installation/deployment, but has no runtime dependency on remote asset servers. Interactive WebGL requires a browser with hardware acceleration. Because viewport geometry and adhesive models are procedural, the initial 3D view may take a few seconds to initialize on slow mobile devices.
+
+## Changes in v1.1
+
+- Wafer frame, leadframe/laminate, pickup trajectory, and camera auto-layout now react to die width AND length, maintaining a physical clearance between the wafer ring and substrate even at maximum die sizes.
+- Removed CSV exports. Final inspection displays either **PASS** or **FAIL**, with a full list of failed checks and measured/estimated values against illustrative thresholds.
+- The verdict panel updates as inputs change and appears within the viewport on the inspection stage.

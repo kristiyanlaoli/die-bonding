@@ -25,7 +25,7 @@ Variables:
 6. Placement offset (µm) = `sqrt(offsetX² + offsetY²)`.
 7. Die tilt and apparent void area are estimated with intentionally simple independent heuristics involving volume-induced coverage, viscosity, force, and imbalance. Neither is based on actual acoustic microscopy or cross-section data.
 8. Thermal cure completion is an approximate fraction based on chosen temperature and duration relative to the nominal preset. It does not use Arrhenius kinetics, thermal diffusivity, or a material cure datasheet.
-9. PASS/WARNING/FAIL thresholds are strictly illustrative and not production specifications.
+9. Binary PASS/FAIL checks use illustrative limits (coverage ≥90%, fillet ≤220 µm, placement error ≤50 µm, tilt ≤0.17°, estimated voids ≤4.5%, BLT within 70–150% of target, cure ≥95%). All failed criteria are shown on screen; they are not production specifications.
 
 ## Graphics conventions
 
@@ -38,3 +38,7 @@ Variables:
 ## Source context
 
 The user-supplied *Die Bonding and Bonding Equipment* PowerPoint emphasizes epoxy paste dispensing, die pick-up and placement, thermal/UV curing depending on adhesive chemistry, and inspection concerns: BLT, placement, die tilt, voids, coverage, delamination, fillet and bleed. This simulator focuses on those concepts without adding flip-chip or solder joints.
+
+## Automatic layout
+
+The scene computes wafer frame size from max(die width, die length), resizes the substrate and its lead geometry, and places wafer and substrate with a defined minimum gap. The scene uses the same layout bounds to fit the camera when die dimensions change.

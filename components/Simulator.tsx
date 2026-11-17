@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
-  Activity, AlertTriangle, ArrowRight, Check, CheckCircle2, ChevronDown,
-  CircleHelp, ClipboardList, Clock3, Cpu, Crosshair, Download, Droplets,
+  Activity, AlertTriangle, Check, CheckCircle2, ChevronDown,
+  CircleHelp, ClipboardList, Clock3, Cpu, Crosshair, Droplets,
   Eye, Gauge, Layers, Maximize2, Move3D, Pause, Play, RotateCcw,
   ScanLine, Settings2, SkipBack, SkipForward, SlidersHorizontal,
   Thermometer, Timer, WandSparkles, XCircle, Zap
@@ -70,29 +70,6 @@ function iconForStage(index: number) {
     case 4: return <Thermometer size={16}/>;
     default: return <ScanLine size={16}/>;
   }
-}
-
-function exportReport(p: Parameters, r: Results) {
-  const lines: (string | number)[][] = [
-    ['Die Bonding Educational Simulation Report', 'Value', 'Unit'],
-    ['Timestamp', new Date().toISOString(), ''],
-    ['Die width', p.dieWidth, 'mm'], ['Die height', p.dieHeight, 'mm'],
-    ['Substrate', p.substrate, ''], ['Dispense pattern', p.pattern, ''],
-    ['Epoxy volume', p.volume, 'nL'], ['Viscosity', p.viscosity, 'Pa·s'],
-    ['Nozzle height', p.nozzleHeight, 'mm'], ['Bond force', p.force, 'N'],
-    ['X offset', p.offsetX, 'µm'], ['Y offset', p.offsetY, 'µm'],
-    ['Dispense imbalance', p.imbalance, '%'], ['Target BLT', p.targetBLT, 'µm'],
-    ['Cure method', p.cureMethod, ''], ['Cure temperature', p.cureTemp, '°C'],
-    ['Cure time', p.cureTime, 'min'], ['BLT estimate', r.blt.toFixed(2), 'µm'],
-    ['Adhesive coverage estimate', r.coverage.toFixed(2), '%'], ['Void estimate', r.voids.toFixed(2), '%'],
-    ['Fillet width estimate', r.fillet.toFixed(2), 'µm'], ['Placement error', r.placementError.toFixed(2), 'µm'],
-    ['Die tilt estimate', r.tilt.toFixed(3), 'degrees'], ['Bleed risk', r.bleed, ''],
-    ['Delamination risk', r.delamination, ''], ['Illustrative judgment', r.status, ''],
-    ['Model disclaimer', 'Educational heuristic only; not industrial CFD, metrology, or qualification results', ''],
-  ];
-  const csv = lines.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
-  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
-  const a = document.createElement('a'); a.href = url; a.download = 'die-bonding-simulation-report.csv'; a.click(); URL.revokeObjectURL(url);
 }
 
 export default function Simulator() {
@@ -170,7 +147,7 @@ export default function Simulator() {
   }, [stageIndex]);
 
   const statusClass = displayedResults.status.toLowerCase();
-  const statusIcon = displayedResults.status === 'PASS' ? <CheckCircle2 size={17}/> : displayedResults.status === 'FAIL' ? <XCircle size={17}/> : <AlertTriangle size={17}/>;
+  const statusIcon = displayedResults.status === 'PASS' ? <CheckCircle2 size={17}/> : <XCircle size={17}/>;
 
   return <div className="app-shell">
     <header className="topbar">
@@ -178,7 +155,7 @@ export default function Simulator() {
         <div><div className="brand-title">DIE BONDING <span>LAB</span></div><div className="brand-subtitle">Semiconductor Assembly · Interactive Digital Twin</div></div>
       </div>
       <div className="topbar-middle"><span className="live-pill"><span/> SIMULATION ONLINE</span><span className="divider-dot">/</span><span>PASTE TYPE ADHESIVE</span></div>
-      <div className="topbar-right"><span className="model-pill"><Activity size={14}/> EDUCATIONAL MODEL</span><button className="secondary-btn export-top" onClick={() => exportReport(params, projectedResults)}><Download size={14}/> Export CSV</button></div>
+      <div className="topbar-right"><span className="model-pill"><Activity size={14}/> EDUCATIONAL MODEL</span></div>
     </header>
 
     <main className="workspace">
@@ -208,6 +185,9 @@ export default function Simulator() {
           <div className="viewport-stage"><SimulationScene params={params} results={displayedResults} stage={stage.id as Stage} progress={progress} viewMode={viewMode} cameraPreset={cameraPreset} showLabels={showLabels}/>
             <div className="viewport-overlay-left"><div className="floating-stat"><div className="floating-label">CURRENT STEP</div><strong>{String(stageIndex + 1).padStart(2, '0')} <span>/ 06</span></strong></div><div className="floating-stat"><div className="floating-label">STEP PROGRESS</div><strong>{Math.round(progress * 100)}<span> %</span></strong></div></div>
             <div className="viewport-overlay-right"><span className="dimension-chip">Die {formatNumber(params.dieWidth)} × {formatNumber(params.dieHeight)} mm</span><span className="dimension-chip">{params.substrate === 'leadframe' ? 'Cu Leadframe' : 'Laminate'}</span></div>
+            {stageIndex === 5 && <div className={`viewport-verdict ${statusClass}`} aria-live="polite">
+              {statusIcon}<span><strong>{displayedResults.status}</strong><small>{displayedResults.issues.length === 0 ? 'All inspection checks satisfied' : `${displayedResults.issues.length} failed inspection check${displayedResults.issues.length !== 1 ? 's' : ''}`}</small></span>
+            </div>}
             {viewMode === 'cross' && <div className="cross-caption"><span>SECTION VIEW</span><b>Bond Line Thickness ≈ {formatNumber(displayedResults.blt)} µm</b><small>Adhesive gap and die tilt are exaggerated for visibility.</small></div>}
           </div>
           <div className="viewport-bottom"><div className="view-buttons"><button className={viewMode === 'assembly' ? 'selected' : ''} onClick={() => setViewMode('assembly')}><Layers size={15}/> Assembly</button><button className={viewMode === 'transparent' ? 'selected' : ''} onClick={() => setViewMode('transparent')}><Eye size={15}/> Transparent</button><button disabled={stageIndex < 3 || (stageIndex === 3 && progress < .45)} title={stageIndex < 3 ? 'Cross-section becomes available during placement' : 'Inspect the bonded adhesive'} className={viewMode === 'cross' ? 'selected' : ''} onClick={() => setViewMode('cross')}><ScanLine size={15}/> Cross-section</button></div><button title="Toggle viewport labels" className="label-toggle" onClick={() => setShowLabels(!showLabels)}><Eye size={14}/> {showLabels ? 'Hide' : 'Show'} labels</button></div>
@@ -258,14 +238,16 @@ export default function Simulator() {
           </div>}
         </div>
         <div className="results-panel"><div className="results-heading"><div><span className="eyebrow">MODELED OUTPUTS</span><h2>Bond quality</h2></div><span className={`status-chip ${statusClass}`}>{statusIcon} {displayedResults.status}</span></div>
-          <div className="metrics-grid"><Metric label="BOND LINE THICKNESS" value={displayedResults.blt} unit="µm" detail="Estimated film gap" severity={displayedResults.blt > params.targetBLT * 1.5 || displayedResults.blt < params.targetBLT * .7 ? 'warn' : 'good'}/><Metric label="ADHESIVE COVERAGE" value={displayedResults.coverage} unit="%" detail="Estimated die area" severity={displayedResults.coverage < 85 ? 'bad' : displayedResults.coverage < 90 ? 'warn' : 'good'}/><Metric label="FILLET WIDTH" value={displayedResults.fillet} unit="µm" detail="Modeled squeeze-out" severity={displayedResults.fillet > 380 ? 'bad' : displayedResults.fillet > 220 ? 'warn' : 'good'}/><Metric label="PLACEMENT ERROR" value={displayedResults.placementError} unit="µm" detail="X/Y deviation" severity={displayedResults.placementError > 125 ? 'bad' : displayedResults.placementError > 50 ? 'warn' : 'good'}/><Metric label="DIE TILT" value={displayedResults.tilt} unit="°" detail="Simplified tilt" severity={displayedResults.tilt > .35 ? 'bad' : displayedResults.tilt > .17 ? 'warn' : 'good'}/><Metric label="ESTIMATED VOIDS" value={displayedResults.voids} unit="%" detail="Heuristic only" severity={displayedResults.voids > 12 ? 'bad' : displayedResults.voids > 4.5 ? 'warn' : 'good'}/></div>
+          <div className="metrics-grid"><Metric label="BOND LINE THICKNESS" value={displayedResults.blt} unit="µm" detail="Estimated film gap" severity={displayedResults.issues.some(x => x.code === 'blt') ? 'bad' : 'good'}/><Metric label="ADHESIVE COVERAGE" value={displayedResults.coverage} unit="%" detail="Estimated die area" severity={displayedResults.issues.some(x => x.code === 'coverage') ? 'bad' : 'good'}/><Metric label="FILLET WIDTH" value={displayedResults.fillet} unit="µm" detail="Modeled squeeze-out" severity={displayedResults.issues.some(x => x.code === 'fillet') ? 'bad' : 'good'}/><Metric label="PLACEMENT ERROR" value={displayedResults.placementError} unit="µm" detail="X/Y deviation" severity={displayedResults.issues.some(x => x.code === 'placement') ? 'bad' : 'good'}/><Metric label="DIE TILT" value={displayedResults.tilt} unit="°" detail="Simplified tilt" severity={displayedResults.issues.some(x => x.code === 'tilt') ? 'bad' : 'good'}/><Metric label="ESTIMATED VOIDS" value={displayedResults.voids} unit="%" detail="Heuristic only" severity={displayedResults.issues.some(x => x.code === 'voids') ? 'bad' : 'good'}/></div>
           <div className="risk-row"><span>BLEED RISK</span><strong className={displayedResults.bleed.toLowerCase()}>{displayedResults.bleed}</strong><span>DELAMINATION</span><strong className={displayedResults.delamination.toLowerCase()}>{displayedResults.delamination}</strong></div>
-          <div className="quality-explain"><AlertTriangle size={14}/><span>{displayedResults.reasons[0]}</span></div>
-          <div className="disclaimer">{stageIndex < 4 ? 'Projected after full cure. ' : ''}All metrics and pass/fail thresholds are illustrative educational estimates—not measured results or industrial qualification limits.</div>
-          <button className="report-button" onClick={() => exportReport(params, displayedResults)}><Download size={15}/> Download measurement report <ArrowRight size={15}/></button>
+          <section className={`inspection-summary ${statusClass}`} aria-label="Inspection verdict" aria-live="polite">
+            <div className="inspection-summary-head">{statusIcon}<div><strong>{displayedResults.status === 'PASS' ? 'PASS — Bonding successful' : 'FAIL — Bonding unsuccessful'}</strong><span>{displayedResults.issues.length === 0 ? 'Seluruh parameter lolos batas simulasi.' : `${displayedResults.issues.length} parameter tidak memenuhi batas simulasi.`}</span></div></div>
+            {displayedResults.issues.length > 0 ? <ul className="issue-list">{displayedResults.issues.map(issue => <li key={issue.code}><strong>{issue.title}</strong><span>{issue.detail}</span></li>)}</ul> : <p className="pass-detail">Coverage, BLT, fillet, placement, tilt, void, dan curing memenuhi batas edukatif yang ditentukan.</p>}
+          </section>
+          <div className="disclaimer">{stageIndex < 4 ? 'Projected after full cure. ' : stageIndex === 4 ? 'Cure is still in progress. ' : ''}PASS/FAIL and measurements are educational estimates—not industrial qualification limits.</div>
         </div>
       </aside>
     </main>
-    <footer className="app-footer"><span><Zap size={12}/> EPOXY DIE ATTACH LAB</span><span>PROCESS: DISPENSE → PICK → ALIGN → PLACE → CURE → INSPECT</span><span>SIMULATION MODEL v1.0 · EDUCATIONAL ONLY</span></footer>
+    <footer className="app-footer"><span><Zap size={12}/> EPOXY DIE ATTACH LAB</span><span>PROCESS: DISPENSE → PICK → ALIGN → PLACE → CURE → INSPECT</span><span>SIMULATION MODEL v1.1 · EDUCATIONAL ONLY</span></footer>
   </div>;
 }

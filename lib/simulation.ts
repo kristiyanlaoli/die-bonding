@@ -73,8 +73,8 @@ export type Results = {
   tilt: number;
   bleed: 'Low' | 'Elevated' | 'High';
   delamination: 'Low' | 'Elevated' | 'High';
-  status: 'PASS' | 'WARNING' | 'FAIL';
-  reasons: string[];
+  status: 'PASS' | 'FAIL';
+  issues: { code: string; title: string; detail: string }[];
   effectiveVolume: number;
 };
 
@@ -100,19 +100,41 @@ export function computeResults(p: Parameters, cureProgress = 1): Results {
   const voids = clamp(0.4 + (100 - coverage) * 0.13 + Math.max(0, p.viscosity - 12) * 0.3 + Math.max(0, 1.5 - p.force) * 1.4 + p.imbalance * 0.025, 0.2, 35);
   const bleed: Results['bleed'] = fillet > 380 ? 'High' : fillet > 220 ? 'Elevated' : 'Low';
   const delamination: Results['delamination'] = cureProgress < 0.75 || voids > 11 || coverage < 72 ? 'High' : voids > 4.5 || coverage < 90 || cureProgress < 0.95 ? 'Elevated' : 'Low';
-  const reasons: string[] = [];
-  if (coverage < 85) reasons.push('Insufficient adhesive coverage');
-  if (fillet > 380) reasons.push('Excessive fillet / potential bleed');
-  if (placementError > 75) reasons.push('Large placement offset');
-  if (tilt > 0.25) reasons.push('Excessive estimated die tilt');
-  if (voids > 7) reasons.push('Elevated estimated void percentage');
-  if (blt < p.targetBLT * 0.60 || blt > p.targetBLT * 1.8) reasons.push('BLT outside illustrative tolerance');
-  if (cureProgress < 0.95) reasons.push('Curing not yet complete');
-  const fail = coverage < 72 || fillet > 400 || placementError > 125 || tilt > 0.35 || voids > 12 || (cureProgress < 0.75);
-  const warning = coverage < 90 || fillet > 220 || placementError > 50 || tilt > 0.17 || voids > 4.5 || blt < p.targetBLT * .7 || blt > p.targetBLT * 1.5 || cureProgress < 0.95;
-  const status: Results['status'] = fail ? 'FAIL' : warning ? 'WARNING' : 'PASS';
-  if (reasons.length === 0) reasons.push('All illustrative inspection thresholds satisfied');
-  return { blt, coverage, voids, fillet, placementError, tilt, bleed, delamination, status, reasons, effectiveVolume: filmVolume };
+  // Single source of truth for the binary PASS/FAIL inspection readout.
+  // These are illustrative teaching limits, NOT manufacturing acceptance standards.
+  const issues: Results['issues'] = [];
+  if (coverage < 90) issues.push({
+    code: 'coverage', title: 'Insufficient adhesive coverage',
+    detail: `${coverage.toFixed(1)}% (minimum 90%). Epoxy tidak cukup menutupi bagian bawah die; coba tambah volume atau bonding force.`,
+  });
+  if (fillet > 220) issues.push({
+    code: 'fillet', title: 'Excessive fillet / adhesive bleed',
+    detail: `${fillet.toFixed(1)} µm (maksimum 220 µm). Epoxy terlalu banyak keluar dari tepi die; kurangi volume epoxy.`,
+  });
+  if (placementError > 50) issues.push({
+    code: 'placement', title: 'Die misalignment',
+    detail: `${placementError.toFixed(1)} µm (maksimum 50 µm). Posisi die bergeser dari target; koreksi X/Y offset.`,
+  });
+  if (tilt > 0.17) issues.push({
+    code: 'tilt', title: 'Excessive die tilt',
+    detail: `${tilt.toFixed(3)}° (maksimum 0.170°). Die terlalu miring; periksa keseragaman dispensing dan bonding force.`,
+  });
+  if (voids > 4.5) issues.push({
+    code: 'voids', title: 'High estimated void content',
+    detail: `${voids.toFixed(1)}% (maksimum 4.5%). Risiko rongga udara meningkat; periksa viscosity, coverage, dan bonding force.`,
+  });
+  const minBLT = p.targetBLT * 0.70;
+  const maxBLT = p.targetBLT * 1.50;
+  if (blt < minBLT || blt > maxBLT) issues.push({
+    code: 'blt', title: 'Bond Line Thickness out of range',
+    detail: `${blt.toFixed(1)} µm (rentang ${minBLT.toFixed(1)}–${maxBLT.toFixed(1)} µm). Sesuaikan volume epoxy, luas die, dan target BLT.`,
+  });
+  if (cureProgress < 0.95) issues.push({
+    code: 'cure', title: 'Incomplete adhesive curing',
+    detail: `${(cureProgress * 100).toFixed(0)}% cured (minimum 95%). Periksa suhu, waktu, atau lanjutkan animasi curing.`,
+  });
+  const status: Results['status'] = issues.length === 0 ? 'PASS' : 'FAIL';
+  return { blt, coverage, voids, fillet, placementError, tilt, bleed, delamination, status, issues, effectiveVolume: filmVolume };
 }
 
 export function getCureFraction(p: Parameters, progress: number): number {

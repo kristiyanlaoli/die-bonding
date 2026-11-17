@@ -1,9 +1,10 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { CameraPreset, Parameters, Results, Stage, ViewMode, STAGES, clamp, lerp, smooth } from '@/lib/simulation';
+import { getSceneLayout } from '@/lib/sceneLayout';
 
 type SceneProps = {
   params: Parameters;
@@ -20,8 +21,6 @@ const EPOXY = '#f3a445';
 const SILICON = '#26384d';
 const PAD_HEIGHT = 0.33;
 const DIE_THICK = 0.37;
-const SUB_X = 2.2;
-const WAFER_X = -7.6;
 
 function EpoxyMaterial({ cured = false, transparent = false }: { cured?: boolean; transparent?: boolean }) {
   return <meshPhysicalMaterial color={cured ? '#c88445' : EPOXY} roughness={cured ? 0.4 : 0.19} metalness={0.06} transparent opacity={transparent ? 0.47 : 0.89} clearcoat={cured ? .2 : .9} clearcoatRoughness={0.12} />;
@@ -67,17 +66,18 @@ function TapeStage({ params, picked, eject }: { params: Parameters; picked: bool
   const dieH = params.dieHeight;
   const spacingX = dieW + .16;
   const spacingZ = dieH + .16;
-  return <group position={[WAFER_X, 0, 0]}>
+  const layout = getSceneLayout(params);
+  return <group position={[layout.waferX, 0, 0]}>
     <mesh position={[0, -.44, 0]} castShadow receiveShadow>
-      <cylinderGeometry args={[Math.max(4.4, dieW * 1.8), Math.max(4.4, dieW * 1.8), .28, 64]} />
+      <cylinderGeometry args={[layout.tapeRadius, layout.tapeRadius, .28, 64]} />
       <meshStandardMaterial color="#27374a" metalness={.75} roughness={.39} />
     </mesh>
     <mesh position={[0, -.20, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <circleGeometry args={[Math.max(4.2, dieW * 1.75), 64]} />
+      <circleGeometry args={[layout.tapeRadius - .09, 64]} />
       <meshPhysicalMaterial color="#3c8a95" transparent opacity={.22} side={2} roughness={.26} />
     </mesh>
     <mesh position={[0, -.16, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[Math.max(4.28, dieW * 1.79), .18, 10, 60]} />
+      <torusGeometry args={[layout.tapeRadius + .14, .18, 10, 60]} />
       <meshStandardMaterial color="#a4b4c4" metalness={.83} roughness={.26} />
     </mesh>
     {[-1, 0, 1].flatMap(ix => [-1, 0, 1].map(iz => {
@@ -100,9 +100,10 @@ function TapeStage({ params, picked, eject }: { params: Parameters; picked: bool
 
 function Substrate({ p }: { p: Parameters }) {
   const lead = p.substrate === 'leadframe';
-  return <group position={[SUB_X, 0, 0]}>
+  const layout = getSceneLayout(p);
+  return <group position={[layout.substrateX, 0, 0]}>
     <mesh position={[0, -.065, 0]} castShadow receiveShadow>
-      <boxGeometry args={[8.5, .62, 7.7]} />
+      <boxGeometry args={[layout.substrateWidth, .62, layout.substrateDepth]} />
       <meshStandardMaterial color={lead ? '#45566a' : '#235b55'} metalness={lead ? .72 : .17} roughness={.38} />
     </mesh>
     {lead ? <>
@@ -110,7 +111,7 @@ function Substrate({ p }: { p: Parameters }) {
         <boxGeometry args={[p.dieWidth + 1, .11, p.dieHeight + 1]} />
         <meshStandardMaterial color="#bd895a" metalness={.89} roughness={.22} />
       </mesh>
-      {[-1, 1].flatMap(side => [-2, -1, 0, 1, 2].map(j => <mesh key={`lead-${side}-${j}`} position={[side * 3.85, .255, j * .61]}>
+      {[-1, 1].flatMap(side => [-2, -1, 0, 1, 2].map(j => <mesh key={`lead-${side}-${j}`} position={[side * (p.dieWidth / 2 + 1.22), .255, j * .61]}>
         <boxGeometry args={[.65, .08, .33]} />
         <meshStandardMaterial color="#d1a178" metalness={.84} roughness={.24} />
       </mesh>))}
@@ -119,7 +120,7 @@ function Substrate({ p }: { p: Parameters }) {
         <boxGeometry args={[p.dieWidth + 1, .11, p.dieHeight + 1]} />
         <meshStandardMaterial color="#a87d53" metalness={.72} roughness={.29} />
       </mesh>
-      {Array.from({ length: 10 }, (_, k) => <mesh key={k} position={[(-4 + k * .8), .255, -3.38]}>
+      {Array.from({ length: 10 }, (_, k) => <mesh key={k} position={[-layout.substrateWidth * .44 + k * layout.substrateWidth * .088, .255, -layout.substrateDepth * .43]}>
         <boxGeometry args={[.23, .02, .8]} />
         <meshStandardMaterial color="#d0a260" metalness={.81} roughness={.27} />
       </mesh>)}
@@ -129,7 +130,7 @@ function Substrate({ p }: { p: Parameters }) {
       <mesh><boxGeometry args={[.025, .012, .17]} /><meshBasicMaterial color="#7cedee" /></mesh>
     </group>))}
     <mesh position={[0, -.41, 0]} receiveShadow>
-      <boxGeometry args={[9.3, .09, 8.4]} />
+      <boxGeometry args={[layout.substrateWidth + .8, .09, layout.substrateDepth + .7]} />
       <meshStandardMaterial color="#142336" metalness={.4} roughness={.57} />
     </mesh>
   </group>;
@@ -148,7 +149,7 @@ function DispensedPaste({ p, progress }: { p: Parameters; progress: number }) {
   const amount = Math.min(pts.length, Math.ceil(progress * pts.length));
   const radius = p.pattern === 'x' ? .17 : p.pattern === 'single' ? .65 : .40;
   const scale = clamp(Math.sqrt(p.volume / 460), .65, 1.45);
-  return <group position={[SUB_X, PAD_HEIGHT + .085, 0]}>
+  return <group position={[getSceneLayout(p).substrateX, PAD_HEIGHT + .085, 0]}>
     {pts.slice(0, amount).map((pt, i) => <mesh key={i} position={[pt[0] * p.dieWidth * .68, .03, pt[1] * p.dieHeight * .68]} scale={[scale, .3 + p.volume / 1350, scale]} castShadow>
       <sphereGeometry args={[radius, 16, 10]} />
       <EpoxyMaterial />
@@ -164,7 +165,7 @@ function SpreadPaste({ p, r, fraction, cured, transparent }: { p: Parameters; r:
   const film = lerp(.44, clamp(r.blt * .0075, .105, .58), amount);
   const y = PAD_HEIGHT + film / 2;
   const fillet = clamp(r.fillet / 1000, 0, .60) * amount;
-  return <group position={[SUB_X + p.offsetX / 1000, 0, p.offsetY / 1000]}>
+  return <group position={[getSceneLayout(p).substrateX + p.offsetX / 1000, 0, p.offsetY / 1000]}>
     <mesh castShadow receiveShadow position={[0, y, 0]}>
       <boxGeometry args={[width, film, depth]} />
       <EpoxyMaterial cured={cured} transparent={transparent} />
@@ -206,7 +207,7 @@ function Nozzle({ p, progress }: { p: Parameters; progress: number }) {
     dx = diagonal * p.dieWidth * .98;
     dz = (t < .5 ? diagonal : -diagonal) * p.dieHeight * .98;
   }
-  return <group position={[SUB_X + dx, y, dz]}>
+  return <group position={[getSceneLayout(p).substrateX + dx, y, dz]}>
     <mesh position={[0, .85, 0]} castShadow>
       <cylinderGeometry args={[.27, .32, 1.6, 24]} />
       <meshStandardMaterial color="#a2b6c7" metalness={.85} roughness={.20} />
@@ -253,7 +254,7 @@ function Collet({ x, y, z }: { x: number; y: number; z: number }) {
 
 function AlignmentOverlay({ p, progress }: { p: Parameters; progress: number }) {
   const glow = .3 + Math.sin(progress * 10) * .20;
-  return <group position={[SUB_X, 1.05, 0]}>
+  return <group position={[getSceneLayout(p).substrateX, 1.05, 0]}>
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[Math.max(p.dieWidth, p.dieHeight) * .62, Math.max(p.dieWidth, p.dieHeight) * .63, 64]} />
       <meshBasicMaterial color="#64f3f5" side={2} transparent opacity={.75 + glow * .2} />
@@ -269,13 +270,13 @@ function AlignmentOverlay({ p, progress }: { p: Parameters; progress: number }) 
 
 function CureChamber({ progress, p }: { progress: number; p: Parameters }) {
   const glow = smooth(progress);
-  return <group position={[SUB_X, 1.5, 0]}>
+  return <group position={[getSceneLayout(p).substrateX, 1.5, 0]}>
     <mesh position={[0, .40, 0]}>
-      <boxGeometry args={[9.2, 3.75, 8.5]} />
+      <boxGeometry args={[getSceneLayout(p).substrateWidth + .7, 3.75, getSceneLayout(p).substrateDepth + .8]} />
       <meshPhysicalMaterial color={p.cureMethod === 'thermal' ? '#ed9747' : '#6fc5ff'} transparent opacity={.055 + glow * .040} roughness={.1} side={2} depthWrite={false} />
     </mesh>
-    {[-1, 1].map(s => <mesh key={s} position={[s * 4.45, 2.2, 0]}>
-      <boxGeometry args={[.06, .09, 7.9]} />
+    {[-1, 1].map(s => <mesh key={s} position={[s * (getSceneLayout(p).substrateWidth / 2 - .2), 2.2, 0]}>
+      <boxGeometry args={[.06, .09, getSceneLayout(p).substrateDepth - .3]} />
       <meshBasicMaterial color={p.cureMethod === 'thermal' ? '#f9a35d' : '#a3a6ff'} transparent opacity={.55 + glow * .4} />
     </mesh>)}
     <pointLight intensity={1.1 * glow} color={p.cureMethod === 'thermal' ? '#ff8b3c' : '#779aff'} position={[0, 1.7, 0]} distance={10} />
@@ -302,14 +303,15 @@ function Ground() {
 }
 
 function getDiePose(stage: Stage, progress: number, p: Parameters, r: Results) {
-  const px = SUB_X + p.offsetX / 1000;
+  const layout = getSceneLayout(p);
+  const px = layout.substrateX + p.offsetX / 1000;
   const pz = p.offsetY / 1000;
   const film = clamp(r.blt * .0075, .105, .58);
   const bondedY = PAD_HEIGHT + film + DIE_THICK / 2;
   const ix = STAGES.findIndex(s => s.id === stage);
-  if (ix === 0) return { x: WAFER_X, y: .12, z: 0 };
-  if (ix === 1) return { x: WAFER_X, y: .12 + smooth((progress - .22) / .7) * 2.85, z: 0 };
-  if (ix === 2) return { x: lerp(WAFER_X, px, smooth(progress)), y: 2.97, z: lerp(0, pz, smooth(progress)) };
+  if (ix === 0) return { x: layout.waferX, y: .12, z: 0 };
+  if (ix === 1) return { x: layout.waferX, y: .12 + smooth((progress - .22) / .7) * 2.85, z: 0 };
+  if (ix === 2) return { x: lerp(layout.waferX, px, smooth(progress)), y: 2.97, z: lerp(0, pz, smooth(progress)) };
   if (ix === 3) return { x: px, y: lerp(2.97, bondedY, smooth(progress / .87)), z: pz };
   return { x: px, y: bondedY, z: pz };
 }
@@ -335,7 +337,7 @@ function Assembly({ p, r, stage, progress, viewMode }: { p: Parameters; r: Resul
     {(stageIndex === 1 || stageIndex === 2 || stageIndex === 3 && progress < .92) && picked && <Collet x={pose.x} y={pose.y} z={pose.z} />}
     {stage === 'align' && <AlignmentOverlay p={p} progress={progress} />}
     {stage === 'cure' && <CureChamber p={p} progress={progress} />}
-    {stageIndex >= 3 && <group position={[SUB_X, PAD_HEIGHT + .02, 0]}>
+    {stageIndex >= 3 && <group position={[getSceneLayout(p).substrateX, PAD_HEIGHT + .02, 0]}>
       <mesh position={[-p.dieWidth / 2 - .35, .005, 0]}><boxGeometry args={[.035, .016, p.dieHeight + .4]} /><meshBasicMaterial color="#59d8e7" transparent opacity={.68} /></mesh>
       <mesh position={[p.dieWidth / 2 + .35, .005, 0]}><boxGeometry args={[.035, .016, p.dieHeight + .4]} /><meshBasicMaterial color="#59d8e7" transparent opacity={.68} /></mesh>
     </group>}
@@ -383,27 +385,53 @@ function CrossSection({ p, r }: { p: Parameters; r: Results }) {
   </group>;
 }
 
-const CAMERA: Record<CameraPreset, [number, number, number]> = {
-  iso: [11, 9, 16],
-  top: [0, 23, .04],
-  front: [0, 3.1, 22],
-  side: [23, 4.0, 0],
-};
+/** Refit the camera whenever the die changes size or the viewport is resized. */
+function FitCamera({ p, mode, preset }: { p: Parameters; mode: ViewMode; preset: CameraPreset }) {
+  const { camera, size } = useThree();
+  const layout = getSceneLayout(p);
+  const cross = mode === 'cross';
+  const target: [number, number, number] = cross ? [0, .10, 0] : [layout.centerX, .10, 0];
+  const fov = cross ? 38 : 43;
+  const aspect = Math.max(.55, size.width / Math.max(1, size.height));
+  const halfWidth = cross ? (Math.max(3, p.dieWidth * 1.4) + 3) / 2 : layout.fullWidth / 2;
+  const halfDepth = cross ? 2 : layout.fullDepth / 2;
+  const verticalTan = Math.tan(fov * Math.PI / 360);
+  // Keep both objects visible even when a wide die increases tape diameter.
+  const distance = cross
+    ? Math.max(10, halfWidth / (verticalTan * aspect) * 1.24)
+    : Math.max(20, halfWidth / (verticalTan * aspect) * 1.23, halfDepth / verticalTan * .85);
+
+  useEffect(() => {
+    const orbit: Record<CameraPreset, [number, number, number]> = {
+      iso: [.37, .39, .83], top: [0, 1, .001],
+      front: [0, .13, 1], side: [1, .16, 0],
+    };
+    const direction = cross ? [0, .19, 1] : orbit[preset];
+    const length = Math.hypot(...direction);
+    const scale = distance / length;
+    camera.position.set(target[0] + direction[0] * scale, target[1] + direction[1] * scale, target[2] + direction[2] * scale);
+    camera.lookAt(...target);
+    camera.updateProjectionMatrix();
+  }, [camera, target[0], target[1], target[2], distance, cross, preset]);
+  return null;
+}
 
 export default function SimulationScene({ params, results, stage, progress, viewMode, cameraPreset, showLabels }: SceneProps) {
   const cross = viewMode === 'cross';
-  const camera = cross ? [0, 3.8, 12] as [number, number, number] : CAMERA[cameraPreset];
-  const target: [number, number, number] = cross ? [0, .1, 0] : [-1.6, .1, 0];
+  const layout = getSceneLayout(params);
+  const target: [number, number, number] = cross ? [0, .1, 0] : [layout.centerX, .1, 0];
+  const maxOrbit = Math.max(48, layout.fullWidth * 2.6);
   return <div className="scene-root">
-    <Canvas key={`${viewMode}-${cameraPreset}`} shadows dpr={[1, 1.75]} camera={{ position: camera, fov: cross ? 38 : 43, near: .08, far: 300 }} gl={{ antialias: true, alpha: false }}>
+    <Canvas key={`${viewMode}-${cameraPreset}`} shadows dpr={[1, 1.75]} camera={{ position: [0, 15, 28], fov: cross ? 38 : 43, near: .08, far: 400 }} gl={{ antialias: true, alpha: false }}>
       <color attach="background" args={['#0c1725']} />
-      <fog attach="fog" args={['#0c1725', 24, 55]} />
+      <fog attach="fog" args={['#0c1725', 50, 120]} />
       <ambientLight intensity={1.05} />
       <hemisphereLight args={['#b8efff', '#0a1421', 2.25]} />
-      <directionalLight position={[5, 14, 9]} intensity={2.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-23} shadow-camera-right={23} shadow-camera-top={21} shadow-camera-bottom={-21} />
+      <directionalLight position={[5, 14, 9]} intensity={2.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-40} shadow-camera-right={40} shadow-camera-top={35} shadow-camera-bottom={-35} />
       <directionalLight position={[-9, 7, -6]} color="#4da6cb" intensity={.9} />
       {cross ? <CrossSection p={params} r={results} /> : <Assembly p={params} r={results} stage={stage} progress={progress} viewMode={viewMode} />}
-      <OrbitControls makeDefault target={target} minDistance={cross ? 6 : 7} maxDistance={cross ? 25 : 44} maxPolarAngle={Math.PI * .91} enableDamping dampingFactor={.08} />
+      <OrbitControls makeDefault target={target} minDistance={cross ? 6 : 7} maxDistance={maxOrbit} maxPolarAngle={Math.PI * .91} enableDamping dampingFactor={.08} />
+      <FitCamera p={params} mode={viewMode} preset={cameraPreset} />
     </Canvas>
     {showLabels && <>
       <div className="scene-label scene-label-left"><span className="tiny-dot" /> {cross ? 'SECTION VIEW · ADHESIVE GAP EXAGGERATED' : 'ASSEMBLY · PROCEDURAL 3D'}</div>
