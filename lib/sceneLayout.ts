@@ -6,20 +6,27 @@ import type { Parameters } from './simulation';
  * This must be shared by geometry and camera framing.
  */
 export function getSceneLayout(p: Pick<Parameters, 'dieWidth' | 'dieHeight'>) {
-  const largestDieSide = Math.max(p.dieWidth, p.dieHeight);
-  const tapeRadius = Math.max(4.4, largestDieSide * 1.53);
+  const dieW = p.dieWidth;
+  const dieH = p.dieHeight;
+  const gridStepX = dieW + 0.42;
+  const gridStepZ = dieH + 0.42;
+  // Furthest die corner in the 3x3 tape array (center slot reserved for pick-up)
+  const radialExtent = Math.hypot(gridStepX + dieW / 2, gridStepZ + dieH / 2);
+  const tapeRadius = Math.max(4.0, radialExtent + 0.75);
   const tapeOuterRadius = tapeRadius + 0.36; // torus and backing clearance
-  const substrateWidth = Math.max(8.5, p.dieWidth + 3.6);
-  const substrateDepth = Math.max(7.7, p.dieHeight + 3.6);
-  const substrateX = 2.2;
-  const gap = Math.max(2.4, largestDieSide * 0.34);
+  const baseRadius = tapeOuterRadius + 0.82;
+  const substrateWidth = Math.max(8.5, dieW + 3.6);
+  const substrateDepth = Math.max(7.7, dieH + 3.6);
+  const substrateX = 2.15;
+  const gap = Math.max(2.6, Math.max(dieW, dieH) * 0.36);
   const waferX = substrateX - (substrateWidth / 2 + tapeOuterRadius + gap);
-  const leftEdge = waferX - tapeOuterRadius;
+  const leftEdge = waferX - baseRadius;
   const rightEdge = substrateX + substrateWidth / 2;
 
   return {
     tapeRadius,
     tapeOuterRadius,
+    baseRadius,
     substrateWidth,
     substrateDepth,
     substrateX,
@@ -29,6 +36,6 @@ export function getSceneLayout(p: Pick<Parameters, 'dieWidth' | 'dieHeight'>) {
     rightEdge,
     centerX: (leftEdge + rightEdge) / 2,
     fullWidth: rightEdge - leftEdge,
-    fullDepth: Math.max(2 * tapeOuterRadius, substrateDepth),
+    fullDepth: Math.max(2 * baseRadius, substrateDepth),
   };
 }

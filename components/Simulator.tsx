@@ -248,6 +248,6 @@ export default function Simulator() {
         </div>
       </aside>
     </main>
-    <footer className="app-footer"><span><Zap size={12}/> EPOXY DIE ATTACH LAB</span><span>PROCESS: DISPENSE → PICK → ALIGN → PLACE → CURE → INSPECT</span><span>SIMULATION MODEL v1.1 · EDUCATIONAL ONLY</span></footer>
+    <footer className="app-footer"><span><Zap size={12}/> EPOXY DIE ATTACH LAB</span><span>PROCESS: DISPENSE → PICK → ALIGN → PLACE → CURE → INSPECT</span><span>SIMULATION MODEL v1.3 · EDUCATIONAL ONLY</span></footer>
   </div>;
 }

@@ -124,13 +124,13 @@ function TapeStage({ params, picked, eject }: { params: Parameters; picked: bool
         <meshStandardMaterial color="#dfe8ef" metalness={.88} roughness={.2} />
       </mesh>)}
       <mesh position={[-dieW * .85 - 1.1, -.08, 0]}>
-        <cylinderGeometry args={[.34, .34, .4, 20]} />
+        <cylinderGeometry args={[Math.max(.34, dieW * .08), Math.max(.34, dieW * .08), .4, 20]} />
         <meshStandardMaterial color="#334658" metalness={.62} roughness={.33} />
       </mesh>
     </group>
 
     <mesh position={[0, -.76, 0]}>
-      <cylinderGeometry args={[1.6, 1.7, .34, 32]} />
+      <cylinderGeometry args={[layout.baseRadius - .12, layout.baseRadius, .34, 32]} />
       <meshStandardMaterial color="#101d2b" metalness={.42} roughness={.45} />
     </mesh>
   </group>;

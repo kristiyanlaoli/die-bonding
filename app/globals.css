@@ -162,3 +162,79 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 @media (max-width:440px) { .stage-content strong { font-size:8.5px; }.stage-num {font-size:7px;}.stage-icon {width:27px;height:27px;}.viewport-overlay-right {display:none;}.viewport-stage { min-height:305px; }.viewport-overlay-left { top:12px;left:10px; }.floating-stat {padding:6px 8px;min-width:85px;}.floating-stat strong {font-size:14px;}.floating-label {font-size:7px;}.playback-bar-top small {display:none;}.player-controls {flex-wrap:wrap;gap:10px;}.speed-control {margin-left:auto;}.play-btn {min-width:145px;}.player-group {gap:4px;}.icon-button {width:29px;height:32px;}.timer-text span {display:none;}.cross-caption {min-width:248px;width:85%;}.scene-label {font-size:7px;} }
 
 @media (max-width:440px) { .viewport-verdict {bottom:62px;right:8px;padding:7px 8px;max-width:150px;} .viewport-verdict strong {font-size:10px;} .viewport-verdict small {font-size:8px;} }
+
+
+/* --- v1.3 compact responsive layout refinements --- */
+@media (min-width: 761px) {
+  .app-shell { height: 100svh; min-height: 100svh; overflow: hidden; }
+  .topbar { height: 64px; padding: 0 18px; }
+  .brand-group { min-width: 210px; gap: 10px; }
+  .brand-symbol { width: 38px; height: 38px; }
+  .brand-title { font-size: 14px; }
+  .brand-subtitle { font-size: 7.5px; }
+  .workspace { flex: 1 1 auto; min-height: 0; height: calc(100svh - 92px); grid-template-columns: 188px minmax(0, 1fr) 292px; }
+  .left-panel, .right-panel, .center-column { min-height: 0; }
+  .left-panel, .right-panel { overflow: auto; }
+  .center-column { padding: 10px; gap: 10px; overflow: auto; }
+  .left-panel { padding: 14px 10px 14px; }
+  .right-panel { padding: 14px 12px; }
+  .aside-top { padding: 0 4px 12px; }
+  .aside-top h2, .settings-head h2, .results-heading h2 { font-size: 15px; margin: 6px 0 3px; }
+  .stage-item { padding: 9px 8px; gap: 9px; }
+  .stage-icon { width: 30px; height: 30px; }
+  .stage-content strong { font-size: 11px; }
+  .stage-num { font-size: 8px; }
+  .preset-button { padding: 8px 9px; }
+  .aside-notice { padding: 10px; font-size: 10px; }
+  .viewport-panel, .playback-panel, .info-panel, .log-panel { border-radius: 8px; }
+  .viewport-top { min-height: 54px; padding: 8px 12px; }
+  .viewport-title h1 { font-size: 15px; margin-top: 2px; }
+  .camera-select button { padding: 5px 8px; font-size: 10px; }
+  .viewport-stage { min-height: 290px; height: clamp(290px, 35vh, 380px); max-height: 380px; }
+  .viewport-bottom { padding: 8px 10px; }
+  .view-buttons button, .label-toggle { padding: 7px 10px; font-size: 10px; }
+  .floating-stat { min-width: 88px; padding: 7px 8px; }
+  .floating-stat strong { font-size: 16px; }
+  .playback-panel { padding: 11px 13px 10px; }
+  .playback-bar-top b, .playback-bar-top small, .timer-text { font-size: 10px; }
+  .timeline-range { margin: 12px 0 5px; }
+  .timeline-markers { margin-bottom: 10px; }
+  .timeline-markers button { font-size: 9px; padding: 4px 2px; }
+  .player-controls { gap: 10px; }
+  .play-btn { min-width: 170px; min-height: 38px; }
+  .icon-button { width: 34px; height: 34px; }
+  .lower-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .info-panel, .log-panel { padding: 12px 13px; }
+  .info-panel h3, .log-panel h3 { margin: 4px 0 6px; font-size: 13px; }
+  .info-panel p, .info-line, .log-entry, .equipment-tag { font-size: 10px; }
+  .info-step { font-size: 18px; }
+  .settings-head { gap: 8px; }
+  .tabs { margin-top: 10px; }
+  .tabs button { padding: 10px 12px 9px; }
+  .settings-scroll { padding: 11px 1px 10px; }
+  .input-stack { gap: 11px; }
+  .double-controls { gap: 10px; }
+  .range-field { gap: 6px; }
+  .range-title { font-size: 9px; }
+  .range-title b { font-size: 10px; }
+  .select-field { gap: 6px; font-size: 9px; }
+  .select-wrap select { padding: 8px 28px 8px 9px; font-size: 10px; }
+  .metrics-grid { gap: 7px; }
+  .metric { padding: 9px 8px; }
+  .metric-value { font-size: 18px; margin-top: 6px; }
+  .issue-list { max-height: 180px; }
+  .app-footer { min-height: 28px; padding: 5px 16px; font-size: 8px; }
+}
+
+@media (min-width: 761px) and (max-width: 1280px) {
+  .topbar-middle { display: none; }
+  .workspace { grid-template-columns: 172px minmax(0, 1fr) 272px; }
+  .viewport-stage { height: clamp(275px, 33vh, 345px); max-height: 345px; }
+  .lower-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .app-shell { min-height: 100svh; }
+  .workspace { min-height: 0; }
+  .center-column, .left-panel, .right-panel { overflow: visible; }
+}
