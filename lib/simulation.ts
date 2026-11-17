@@ -1,0 +1,129 @@
+export type Stage = 'dispense' | 'pickup' | 'align' | 'place' | 'cure' | 'inspect';
+export type DispensePattern = 'single' | 'five' | 'x';
+export type SubstrateType = 'leadframe' | 'laminate';
+export type ViewMode = 'assembly' | 'transparent' | 'cross';
+export type CameraPreset = 'iso' | 'top' | 'front' | 'side';
+
+export type Parameters = {
+  dieWidth: number;       // mm
+  dieHeight: number;      // mm
+  substrate: SubstrateType;
+  pattern: DispensePattern;
+  volume: number;         // nL
+  viscosity: number;      // Pa·s, illustrative
+  nozzleHeight: number;   // mm
+  force: number;          // N
+  offsetX: number;        // µm
+  offsetY: number;        // µm
+  imbalance: number;      // %
+  targetBLT: number;      // µm
+  cureTemp: number;       // °C
+  cureTime: number;       // min
+  cureMethod: 'thermal' | 'uv';
+  adhesiveType: 'thermal_epoxy' | 'uv_edge';
+};
+
+export const DEFAULT_PARAMS: Parameters = {
+  dieWidth: 4,
+  dieHeight: 4,
+  substrate: 'leadframe',
+  pattern: 'five',
+  volume: 460,
+  viscosity: 14,
+  nozzleHeight: 0.16,
+  force: 2.2,
+  offsetX: 5,
+  offsetY: -3,
+  imbalance: 4,
+  targetBLT: 25,
+  cureTemp: 165,
+  cureTime: 45,
+  cureMethod: 'thermal',
+  adhesiveType: 'thermal_epoxy',
+};
+
+export const STAGES: { id: Stage; name: string; short: string; duration: number; device: string; explanation: string; purpose: string; issue: string }[] = [
+  { id: 'dispense', name: 'Epoxy Dispensing', short: 'Dispense', duration: 7, device: 'Programmable dispensing nozzle', explanation: 'The nozzle deposits epoxy paste onto the substrate die pad, following a programmable dispensing pattern.', purpose: 'Deliver a consistent adhesive volume and distribution before die placement.', issue: 'Incorrect volume or pattern can cause poor coverage, excessive fillet or adhesive bleed.' },
+  { id: 'pickup', name: 'Die Pick-up', short: 'Pick', duration: 5.5, device: 'Wafer tape, ejector pin, vacuum collet', explanation: 'An ejector pin lifts a good die from the dicing tape; a vacuum collet picks it up with its active face upward.', purpose: 'Transfer the selected die without damaging or contaminating its surfaces.', issue: 'Incorrect pick-up force may cause chipping or die loss.' },
+  { id: 'align', name: 'Optical Alignment', short: 'Align', duration: 4, device: 'Vision cameras and precision motion stage', explanation: 'The bond head moves the die above the target and aligns it to the die pad using reference marks.', purpose: 'Minimize X/Y placement error before the die touches the epoxy.', issue: 'Placement offsets can reduce edge clearance and downstream assembly yield.' },
+  { id: 'place', name: 'Placement & Spreading', short: 'Place', duration: 7, device: 'Servo-controlled bonding head', explanation: 'The die contacts and compresses the epoxy. The paste spreads under the die and can form a fillet around the edges.', purpose: 'Create controlled bond line thickness, coverage and a stable mechanical connection.', issue: 'Insufficient coverage, excessive bleed, uneven BLT and die tilt are key process risks.' },
+  { id: 'cure', name: 'Adhesive Curing', short: 'Cure', duration: 5, device: 'Temperature-controlled curing station', explanation: 'Thermal energy or compatible UV exposure hardens the adhesive in this accelerated, educational visualization.', purpose: 'Develop a durable bond by curing the adhesive with a suitable material-specific process.', issue: 'An inadequate cure can reduce adhesion and long-term reliability.' },
+  { id: 'inspect', name: 'Final Inspection', short: 'Inspect', duration: 4, device: 'Optical and simulated cross-section inspection', explanation: 'Inspect the completed die attach and review modeled bond line thickness, placement error, fillet and defect indicators.', purpose: 'Understand how process inputs influence estimated bonding outcomes.', issue: 'Reported void percentage and delamination risk here are heuristic estimates, not measured inspections.' },
+];
+
+export const PRESETS: { key: string; name: string; description: string; overrides: Partial<Parameters> }[] = [
+  { key: 'ideal', name: 'Nominal Process', description: 'Balanced dispensing, alignment and bond force', overrides: {} },
+  { key: 'low', name: 'Insufficient Epoxy', description: 'Low adhesive volume results in incomplete coverage', overrides: { volume: 185, pattern: 'single', force: 1.3 } },
+  { key: 'high', name: 'Excess Epoxy', description: 'Excess adhesive expands beyond the intended die region', overrides: { volume: 850, force: 3.5 } },
+  { key: 'misalign', name: 'Misalignment', description: 'X/Y offset is introduced deliberately', overrides: { offsetX: 150, offsetY: -130 } },
+  { key: 'tilt', name: 'Die Tilt', description: 'Strong dispensing asymmetry creates uneven bonding', overrides: { imbalance: 85, pattern: 'single', force: 1.2 } },
+  { key: 'void', name: 'Potential Voids', description: 'High viscosity and low force increase void indicators', overrides: { viscosity: 35, force: 0.65, pattern: 'single', imbalance: 35 } },
+];
+
+export const clamp = (v: number, low: number, high: number) => Math.max(low, Math.min(high, v));
+export const lerp = (a: number, b: number, t: number) => a + (b - a) * clamp(t, 0, 1);
+export const smooth = (t: number) => { const s = clamp(t, 0, 1); return s * s * (3 - 2 * s); };
+
+export type Results = {
+  blt: number;
+  coverage: number;
+  voids: number;
+  fillet: number;
+  placementError: number;
+  tilt: number;
+  bleed: 'Low' | 'Elevated' | 'High';
+  delamination: 'Low' | 'Elevated' | 'High';
+  status: 'PASS' | 'WARNING' | 'FAIL';
+  reasons: string[];
+  effectiveVolume: number;
+};
+
+/**
+ * Educational parametric heuristic; not CFD, calibrated material data or SEMI acceptance criteria.
+ * Volume balance and film thickness are internally consistent after simplified partitioning.
+ * For a W×H mm² die, volume [nL] / area [mm²] = equivalent film thickness [µm].
+ */
+export function computeResults(p: Parameters, cureProgress = 1): Results {
+  const area = p.dieWidth * p.dieHeight;
+  const perimeter = 2 * (p.dieWidth + p.dieHeight);
+  const intendedVolume = Math.max(1, area * p.targetBLT);
+  const volumeRatio = p.volume / intendedVolume;
+  const patternBonus = p.pattern === 'five' ? 4 : p.pattern === 'x' ? 2 : -4;
+  const coverage = clamp(90 + (volumeRatio - 1) * 25 + (p.force - 2) * 4 - (p.viscosity - 12) * 0.7 + patternBonus - p.imbalance * 0.08, 35, 99.7);
+  const filmFraction = clamp(0.91 - 0.07 * Math.max(0, volumeRatio - 1), 0.67, 0.97);
+  const blt = clamp(p.volume * filmFraction / (area * coverage / 100), 4, 100);
+  const filmVolume = Math.min(p.volume, area * coverage / 100 * blt);
+  const excessVolume = Math.max(0, p.volume - filmVolume);
+  const fillet = clamp(excessVolume / (perimeter * 0.02), 0, 900); // nL/mm² = µm
+  const placementError = Math.hypot(p.offsetX, p.offsetY);
+  const tilt = clamp(0.012 + p.imbalance * 0.0038 + Math.max(0, 85 - coverage) * 0.008 + Math.max(0, 1.5 - p.force) * 0.018, 0.01, 0.65);
+  const voids = clamp(0.4 + (100 - coverage) * 0.13 + Math.max(0, p.viscosity - 12) * 0.3 + Math.max(0, 1.5 - p.force) * 1.4 + p.imbalance * 0.025, 0.2, 35);
+  const bleed: Results['bleed'] = fillet > 380 ? 'High' : fillet > 220 ? 'Elevated' : 'Low';
+  const delamination: Results['delamination'] = cureProgress < 0.75 || voids > 11 || coverage < 72 ? 'High' : voids > 4.5 || coverage < 90 || cureProgress < 0.95 ? 'Elevated' : 'Low';
+  const reasons: string[] = [];
+  if (coverage < 85) reasons.push('Insufficient adhesive coverage');
+  if (fillet > 380) reasons.push('Excessive fillet / potential bleed');
+  if (placementError > 75) reasons.push('Large placement offset');
+  if (tilt > 0.25) reasons.push('Excessive estimated die tilt');
+  if (voids > 7) reasons.push('Elevated estimated void percentage');
+  if (blt < p.targetBLT * 0.60 || blt > p.targetBLT * 1.8) reasons.push('BLT outside illustrative tolerance');
+  if (cureProgress < 0.95) reasons.push('Curing not yet complete');
+  const fail = coverage < 72 || fillet > 400 || placementError > 125 || tilt > 0.35 || voids > 12 || (cureProgress < 0.75);
+  const warning = coverage < 90 || fillet > 220 || placementError > 50 || tilt > 0.17 || voids > 4.5 || blt < p.targetBLT * .7 || blt > p.targetBLT * 1.5 || cureProgress < 0.95;
+  const status: Results['status'] = fail ? 'FAIL' : warning ? 'WARNING' : 'PASS';
+  if (reasons.length === 0) reasons.push('All illustrative inspection thresholds satisfied');
+  return { blt, coverage, voids, fillet, placementError, tilt, bleed, delamination, status, reasons, effectiveVolume: filmVolume };
+}
+
+export function getCureFraction(p: Parameters, progress: number): number {
+  const tempFactor = p.cureMethod === 'uv'
+    ? (p.adhesiveType === 'uv_edge' ? 1 : 0)
+    : (p.adhesiveType === 'thermal_epoxy' ? clamp((p.cureTemp - 115) / 50, 0.1, 1.35) : 0);
+  const timeFactor = p.cureTime / 45;
+  return clamp(progress * tempFactor * timeFactor, 0, 1);
+}
+
+export function temperatureAt(p: Parameters, progress: number) {
+  if (p.cureMethod === 'uv') return 25;
+  return Math.round(25 + (p.cureTemp - 25) * smooth(progress / 0.65));
+}
