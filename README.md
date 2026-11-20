@@ -80,3 +80,7 @@ This project fetches normal npm dependencies during installation/deployment, but
 - Wafer frame, leadframe/laminate, pickup trajectory, and camera auto-layout now react to die width AND length, maintaining a physical clearance between the wafer ring and substrate even at maximum die sizes.
 - Removed CSV exports. Final inspection displays either **PASS** or **FAIL**, with a full list of failed checks and measured/estimated values against illustrative thresholds.
 - The verdict panel updates as inputs change and appears within the viewport on the inspection stage.
+
+### v1.6 — language selector
+
+English is the initial language on every fresh page load. Use the UK, Indonesian, or Taiwanese flag buttons in the header to switch languages. The buttons use inline SVG artwork rather than emoji, with accessible names and a visible active state. No remote image or font dependency is required.

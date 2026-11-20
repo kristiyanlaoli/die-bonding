@@ -119,7 +119,7 @@ function localizedIssueText(locale: Locale, code: string, value: string) {
  * Volume balance and film thickness are internally consistent after simplified partitioning.
  * For a W×H mm² die, volume [nL] / area [mm²] = equivalent film thickness [µm].
  */
-export function computeResults(p: Parameters, cureProgress = 1, locale: Locale = 'id'): Results {
+export function computeResults(p: Parameters, cureProgress = 1, locale: Locale = 'en'): Results {
   const area = p.dieWidth * p.dieHeight;
   const perimeter = 2 * (p.dieWidth + p.dieHeight);
   const intendedVolume = Math.max(1, area * p.targetBLT);
