@@ -13,6 +13,7 @@ A fully client-side, interactive 3D **educational model** of conventional face-u
 - Six preset scenarios: nominal, insufficient paste, excess paste, misalignment, tilt, potential voids
 - Derived BLT, adhesive coverage, fillet, placement error, tilt, and hypothetical void/delamination indicators
 - On-screen PASS/FAIL inspection verdict with every failed criterion explained; no CSV export
+- v1.4: viewport fills remaining laptop height; Engineering Explanation and Event Monitor default to closed and open on demand without resizing the desktop viewport. On phones the details expand inline.
 - Responsive layout and no external 3D models, databases or paid APIs
 
 ## Run locally

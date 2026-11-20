@@ -82,6 +82,7 @@ export default function Simulator() {
   const [viewMode, setViewMode] = useState<ViewMode>('assembly');
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('iso');
   const [showLabels, setShowLabels] = useState(true);
+  const [detailPanel, setDetailPanel] = useState<'engineering' | 'events' | null>(null);
   const [eventLog, setEventLog] = useState<string[]>(['Simulation initialized · Ready to dispense epoxy']);
   const lastIndex = useRef(0);
   const lastTick = useRef<number | null>(null);
@@ -200,8 +201,14 @@ export default function Simulator() {
           <div className="player-controls"><div className="player-group"><button className="icon-button" title="Previous stage" aria-label="Previous stage" onClick={() => jump(stageIndex - 1)} disabled={stageIndex === 0 && progress === 0}><SkipBack size={17}/></button><button className="icon-button" title="Reset" aria-label="Reset" onClick={reset}><RotateCcw size={17}/></button><button className="play-btn" onClick={() => { if (completed) setPlayhead(0); setPlaying(!playing || completed); }}>{playing ? <Pause size={17} fill="currentColor"/> : <Play size={17} fill="currentColor"/>}{playing ? 'Pause Simulation' : completed ? 'Replay Simulation' : 'Run Simulation'}</button><button className="icon-button" title="Next stage" aria-label="Next stage" onClick={() => jump(stageIndex + 1)} disabled={stageIndex === 5}><SkipForward size={17}/></button></div><div className="speed-control"><span>SPEED</span>{[.5, 1, 2, 4].map(n => <button key={n} className={speed === n ? 'current' : ''} onClick={() => setSpeed(n)}>{n}×</button>)}</div></div>
         </div>
 
-        <div className="lower-grid"><article className="info-panel"><div className="info-heading"><span className="eyebrow">ENGINEERING EXPLANATION</span><span className="info-step">0{stageIndex + 1}</span></div><h3>{stage.name}</h3><p>{stage.explanation}</p><div className="info-line"><CheckCircle2 size={16}/><span>{stage.purpose}</span></div><div className="info-line caution"><AlertTriangle size={16}/><span>{stage.issue}</span></div><div className="equipment-tag"><Settings2 size={13}/> {stage.device}</div></article>
-        <article className="log-panel"><div className="info-heading"><span className="eyebrow">EVENT MONITOR</span><span className="log-running"><span/> {playing ? 'RUNNING' : 'READY'}</span></div><h3>System log</h3><div className="log-lines">{eventLog.map((s, i) => <div className="log-entry" key={`${s}-${i}`}><span>{i === 0 ? '›' : '·'}</span>{s}</div>)}</div></article></div>
+        <div className="detail-tools" onKeyDown={e => { if (e.key === 'Escape') setDetailPanel(null); }}>
+          <div className="detail-toolbar" aria-label="Process information">
+            <button type="button" aria-expanded={detailPanel === 'engineering'} aria-controls="engineering-details" className={detailPanel === 'engineering' ? 'active' : ''} onClick={() => setDetailPanel(old => old === 'engineering' ? null : 'engineering')}><CircleHelp size={14}/> Engineering Explanation <ChevronDown size={13} className="detail-chevron"/></button>
+            <button type="button" aria-expanded={detailPanel === 'events'} aria-controls="event-details" className={detailPanel === 'events' ? 'active' : ''} onClick={() => setDetailPanel(old => old === 'events' ? null : 'events')}><Activity size={14}/> Event Monitor <span className="detail-count">{eventLog.length}</span><ChevronDown size={13} className="detail-chevron"/></button>
+          </div>
+          {detailPanel === 'engineering' && <div className="detail-drawer" id="engineering-details"><article className="info-panel"><div className="info-heading"><span className="eyebrow">ENGINEERING EXPLANATION</span><span className="info-step">0{stageIndex + 1}</span></div><h3>{stage.name}</h3><p>{stage.explanation}</p><div className="info-line"><CheckCircle2 size={16}/><span>{stage.purpose}</span></div><div className="info-line caution"><AlertTriangle size={16}/><span>{stage.issue}</span></div><div className="equipment-tag"><Settings2 size={13}/> {stage.device}</div></article></div>}
+          {detailPanel === 'events' && <div className="detail-drawer" id="event-details"><article className="log-panel"><div className="info-heading"><span className="eyebrow">EVENT MONITOR</span><span className="log-running"><span/> {playing ? 'RUNNING' : 'READY'}</span></div><h3>System log</h3><div className="log-lines">{eventLog.map((s, i) => <div className="log-entry" key={`${s}-${i}`}><span>{i === 0 ? '›' : '·'}</span>{s}</div>)}</div></article></div>}
+        </div>
       </section>
 
       <aside className="right-panel"><div className="settings-head"><div><div className="eyebrow">EQUIPMENT CONFIGURATION</div><h2>Process controls</h2></div><SlidersHorizontal size={19}/></div>
@@ -248,6 +255,6 @@ export default function Simulator() {
         </div>
       </aside>
     </main>
-    <footer className="app-footer"><span><Zap size={12}/> EPOXY DIE ATTACH LAB</span><span>PROCESS: DISPENSE → PICK → ALIGN → PLACE → CURE → INSPECT</span><span>SIMULATION MODEL v1.3 · EDUCATIONAL ONLY</span></footer>
+    <footer className="app-footer"><span><Zap size={12}/> EPOXY DIE ATTACH LAB</span><span>PROCESS: DISPENSE → PICK → ALIGN → PLACE → CURE → INSPECT</span><span>SIMULATION MODEL v1.4 · EDUCATIONAL ONLY</span></footer>
   </div>;
 }
