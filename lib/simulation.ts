@@ -3,6 +3,7 @@ export type DispensePattern = 'single' | 'five' | 'x';
 export type SubstrateType = 'leadframe' | 'laminate';
 export type ViewMode = 'assembly' | 'transparent' | 'cross';
 export type CameraPreset = 'iso' | 'top' | 'front' | 'side';
+export type Locale = 'id' | 'en' | 'zhTW';
 
 export type Parameters = {
   dieWidth: number;       // mm
@@ -78,12 +79,47 @@ export type Results = {
   effectiveVolume: number;
 };
 
+
+function localizedIssueText(locale: Locale, code: string, value: string) {
+  const messages = {
+    id: {
+      coverage: ['Insufficient adhesive coverage', `${value}% (minimum 90%). Epoxy tidak cukup menutupi bagian bawah die; coba tambah volume atau bonding force.`],
+      fillet: ['Excessive fillet / adhesive bleed', `${value} µm (maksimum 220 µm). Epoxy terlalu banyak keluar dari tepi die; kurangi volume epoxy.`],
+      placement: ['Die misalignment', `${value} µm (maksimum 50 µm). Posisi die bergeser dari target; koreksi X/Y offset.`],
+      tilt: ['Excessive die tilt', `${value}° (maksimum 0.170°). Die terlalu miring; periksa keseragaman dispensing dan bonding force.`],
+      voids: ['High estimated void content', `${value}% (maksimum 4.5%). Risiko rongga udara meningkat; periksa viscosity, coverage, dan bonding force.`],
+      blt: ['Bond Line Thickness out of range', `${value} µm (rentang BLT di luar target). Sesuaikan volume epoxy, luas die, dan target BLT.`],
+      cure: ['Incomplete adhesive curing', `${value}% cured (minimum 95%). Periksa suhu, waktu, atau lanjutkan animasi curing.`],
+    },
+    en: {
+      coverage: ['Insufficient adhesive coverage', `${value}% (minimum 90%). The epoxy does not cover enough of the die underside; increase dispense volume or bonding force.`],
+      fillet: ['Excessive fillet / adhesive bleed', `${value} µm (maximum 220 µm). Too much epoxy squeezes out from the die edge; reduce epoxy volume.`],
+      placement: ['Die misalignment', `${value} µm (maximum 50 µm). The die is offset from the target; correct the X/Y placement offset.`],
+      tilt: ['Excessive die tilt', `${value}° (maximum 0.170°). The die is too tilted; check dispensing uniformity and bonding force.`],
+      voids: ['High estimated void content', `${value}% (maximum 4.5%). The air-void risk is high; review viscosity, coverage, and bonding force.`],
+      blt: ['Bond Line Thickness out of range', `${value} µm (BLT outside the target range). Adjust epoxy volume, die size, and target BLT.`],
+      cure: ['Incomplete adhesive curing', `${value}% cured (minimum 95%). Check the cure temperature, cure time, or continue the curing animation.`],
+    },
+    zhTW: {
+      coverage: ['膠體覆蓋不足', `${value}%（最低 90%）。環氧膠未充分覆蓋晶粒底部，請增加點膠量或貼裝壓力。`],
+      fillet: ['膠邊過大／溢膠', `${value} µm（最大 220 µm）。晶粒邊緣擠出過多膠體，請降低點膠量。`],
+      placement: ['晶粒對位偏移', `${value} µm（最大 50 µm）。晶粒位置偏離目標，請修正 X/Y 偏移量。`],
+      tilt: ['晶粒傾斜過大', `${value}°（最大 0.170°）。晶粒傾斜過大，請檢查點膠均勻性與貼裝壓力。`],
+      voids: ['空洞率估計過高', `${value}%（最大 4.5%）。空氣空洞風險偏高，請檢查黏度、覆蓋率與貼裝壓力。`],
+      blt: ['鍵合層厚度超出範圍', `${value} µm（BLT 超出目標範圍）。請調整膠量、晶粒尺寸與目標 BLT。`],
+      cure: ['固化不完全', `${value}% 已固化（最低 95%）。請檢查固化溫度、時間，或繼續播放固化動畫。`],
+    },
+  } as const;
+  const pack = messages[locale][code as keyof typeof messages['id']];
+  return { title: pack[0], detail: pack[1] };
+}
+
 /**
  * Educational parametric heuristic; not CFD, calibrated material data or SEMI acceptance criteria.
  * Volume balance and film thickness are internally consistent after simplified partitioning.
  * For a W×H mm² die, volume [nL] / area [mm²] = equivalent film thickness [µm].
  */
-export function computeResults(p: Parameters, cureProgress = 1): Results {
+export function computeResults(p: Parameters, cureProgress = 1, locale: Locale = 'id'): Results {
   const area = p.dieWidth * p.dieHeight;
   const perimeter = 2 * (p.dieWidth + p.dieHeight);
   const intendedVolume = Math.max(1, area * p.targetBLT);
@@ -103,36 +139,36 @@ export function computeResults(p: Parameters, cureProgress = 1): Results {
   // Single source of truth for the binary PASS/FAIL inspection readout.
   // These are illustrative teaching limits, NOT manufacturing acceptance standards.
   const issues: Results['issues'] = [];
-  if (coverage < 90) issues.push({
-    code: 'coverage', title: 'Insufficient adhesive coverage',
-    detail: `${coverage.toFixed(1)}% (minimum 90%). Epoxy tidak cukup menutupi bagian bawah die; coba tambah volume atau bonding force.`,
-  });
-  if (fillet > 220) issues.push({
-    code: 'fillet', title: 'Excessive fillet / adhesive bleed',
-    detail: `${fillet.toFixed(1)} µm (maksimum 220 µm). Epoxy terlalu banyak keluar dari tepi die; kurangi volume epoxy.`,
-  });
-  if (placementError > 50) issues.push({
-    code: 'placement', title: 'Die misalignment',
-    detail: `${placementError.toFixed(1)} µm (maksimum 50 µm). Posisi die bergeser dari target; koreksi X/Y offset.`,
-  });
-  if (tilt > 0.17) issues.push({
-    code: 'tilt', title: 'Excessive die tilt',
-    detail: `${tilt.toFixed(3)}° (maksimum 0.170°). Die terlalu miring; periksa keseragaman dispensing dan bonding force.`,
-  });
-  if (voids > 4.5) issues.push({
-    code: 'voids', title: 'High estimated void content',
-    detail: `${voids.toFixed(1)}% (maksimum 4.5%). Risiko rongga udara meningkat; periksa viscosity, coverage, dan bonding force.`,
-  });
+  if (coverage < 90) {
+    const msg = localizedIssueText(locale, 'coverage', coverage.toFixed(1));
+    issues.push({ code: 'coverage', title: msg.title, detail: msg.detail });
+  }
+  if (fillet > 220) {
+    const msg = localizedIssueText(locale, 'fillet', fillet.toFixed(1));
+    issues.push({ code: 'fillet', title: msg.title, detail: msg.detail });
+  }
+  if (placementError > 50) {
+    const msg = localizedIssueText(locale, 'placement', placementError.toFixed(1));
+    issues.push({ code: 'placement', title: msg.title, detail: msg.detail });
+  }
+  if (tilt > 0.17) {
+    const msg = localizedIssueText(locale, 'tilt', tilt.toFixed(3));
+    issues.push({ code: 'tilt', title: msg.title, detail: msg.detail });
+  }
+  if (voids > 4.5) {
+    const msg = localizedIssueText(locale, 'voids', voids.toFixed(1));
+    issues.push({ code: 'voids', title: msg.title, detail: msg.detail });
+  }
   const minBLT = p.targetBLT * 0.70;
   const maxBLT = p.targetBLT * 1.50;
-  if (blt < minBLT || blt > maxBLT) issues.push({
-    code: 'blt', title: 'Bond Line Thickness out of range',
-    detail: `${blt.toFixed(1)} µm (rentang ${minBLT.toFixed(1)}–${maxBLT.toFixed(1)} µm). Sesuaikan volume epoxy, luas die, dan target BLT.`,
-  });
-  if (cureProgress < 0.95) issues.push({
-    code: 'cure', title: 'Incomplete adhesive curing',
-    detail: `${(cureProgress * 100).toFixed(0)}% cured (minimum 95%). Periksa suhu, waktu, atau lanjutkan animasi curing.`,
-  });
+  if (blt < minBLT || blt > maxBLT) {
+    const msg = localizedIssueText(locale, 'blt', blt.toFixed(1));
+    issues.push({ code: 'blt', title: msg.title, detail: locale === 'id' ? `${blt.toFixed(1)} µm (rentang ${minBLT.toFixed(1)}–${maxBLT.toFixed(1)} µm). Sesuaikan volume epoxy, luas die, dan target BLT.` : locale === 'en' ? `${blt.toFixed(1)} µm (range ${minBLT.toFixed(1)}–${maxBLT.toFixed(1)} µm). Adjust epoxy volume, die size, and target BLT.` : `${blt.toFixed(1)} µm（範圍 ${minBLT.toFixed(1)}–${maxBLT.toFixed(1)} µm）。請調整膠量、晶粒尺寸與目標 BLT。`});
+  }
+  if (cureProgress < 0.95) {
+    const msg = localizedIssueText(locale, 'cure', (cureProgress * 100).toFixed(0));
+    issues.push({ code: 'cure', title: msg.title, detail: msg.detail });
+  }
   const status: Results['status'] = issues.length === 0 ? 'PASS' : 'FAIL';
   return { blt, coverage, voids, fillet, placementError, tilt, bleed, delamination, status, issues, effectiveVolume: filmVolume };
 }

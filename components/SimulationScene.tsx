@@ -14,6 +14,7 @@ type SceneProps = {
   viewMode: ViewMode;
   cameraPreset: CameraPreset;
   showLabels: boolean;
+  sceneLabels?: { leftAssembly: string; leftCross: string; rightAssembly: string; rightCross: string };
 };
 
 const COPPER = '#bc8054';
@@ -472,7 +473,7 @@ function FitCamera({ p, mode, preset }: { p: Parameters; mode: ViewMode; preset:
   return null;
 }
 
-export default function SimulationScene({ params, results, stage, progress, viewMode, cameraPreset, showLabels }: SceneProps) {
+export default function SimulationScene({ params, results, stage, progress, viewMode, cameraPreset, showLabels, sceneLabels }: SceneProps) {
   const cross = viewMode === 'cross';
   const layout = getSceneLayout(params);
   const target: [number, number, number] = cross ? [0, .1, 0] : [layout.centerX, .1, 0];
@@ -490,8 +491,8 @@ export default function SimulationScene({ params, results, stage, progress, view
       <FitCamera p={params} mode={viewMode} preset={cameraPreset} />
     </Canvas>
     {showLabels && <>
-      <div className="scene-label scene-label-left"><span className="tiny-dot" /> {cross ? 'SECTION VIEW · ADHESIVE GAP EXAGGERATED' : 'ASSEMBLY · PROCEDURAL 3D'}</div>
-      <div className="scene-label scene-label-right">{cross ? 'BLT / FILLET INSPECTION' : 'DRAG TO ORBIT · SCROLL TO ZOOM'}</div>
+      <div className="scene-label scene-label-left"><span className="tiny-dot" /> {cross ? (sceneLabels?.leftCross ?? 'SECTION VIEW · ADHESIVE GAP EXAGGERATED') : (sceneLabels?.leftAssembly ?? 'ASSEMBLY · PROCEDURAL 3D')}</div>
+      <div className="scene-label scene-label-right">{cross ? (sceneLabels?.rightCross ?? 'BLT / FILLET INSPECTION') : (sceneLabels?.rightAssembly ?? 'DRAG TO ORBIT · SCROLL TO ZOOM')}</div>
     </>}
   </div>;
 }
