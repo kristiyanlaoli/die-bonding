@@ -3,8 +3,8 @@
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useEffect, useMemo } from 'react';
-import { CameraPreset, Parameters, Results, Stage, ViewMode, STAGES, clamp, lerp, smooth } from '@/lib/simulation';
-import { getSceneLayout } from '@/lib/sceneLayout';
+import { CameraPreset, Parameters, Results, Stage, ViewMode, STAGES, clamp, lerp, smooth } from '@/simulators/paste/lib/simulation';
+import { getSceneLayout } from '@/simulators/paste/lib/sceneLayout';
 
 type SceneProps = {
   params: Parameters;

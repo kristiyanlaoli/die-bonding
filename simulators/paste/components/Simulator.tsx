@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import LanguageFlag from '@/components/LanguageFlag';
+import SuiteBar from '@/components/SuiteBar';
+import LanguageFlag from '@/simulators/paste/components/LanguageFlag';
 import {
   Activity, AlertTriangle, Check, CheckCircle2, ChevronDown,
   CircleHelp, ClipboardList, Clock3, Cpu, Crosshair, Droplets,
@@ -13,9 +14,9 @@ import {
 import {
   CameraPreset, clamp, computeResults, DEFAULT_PARAMS, getCureFraction,
   Parameters, PRESETS, Results, STAGES, Stage, temperatureAt, ViewMode, Locale
-} from '@/lib/simulation';
+} from '@/simulators/paste/lib/simulation';
 
-const SimulationScene = dynamic(() => import('@/components/SimulationScene'), {
+const SimulationScene = dynamic(() => import('@/simulators/paste/components/SimulationScene'), {
   ssr: false,
   loading: () => <div className="scene-loading">Preparing 3D process viewport…</div>,
 });
@@ -244,8 +245,8 @@ function iconForStage(index: number) {
   }
 }
 
-export default function Simulator() {
-  const [language, setLanguage] = useState<Language>('en');
+export default function Simulator({ initialLanguage = 'en' }: { initialLanguage?: Language }) {
+  const [language, setLanguage] = useState<Language>(initialLanguage);
   const [params, setParams] = useState<Parameters>(DEFAULT_PARAMS);
   const [preset, setPreset] = useState('ideal');
   const [playhead, setPlayhead] = useState(0);
@@ -337,7 +338,9 @@ export default function Simulator() {
   const statusClass = displayedResults.status.toLowerCase();
   const statusIcon = displayedResults.status === 'PASS' ? <CheckCircle2 size={17}/> : <XCircle size={17}/>;
 
-  return <div className="app-shell">
+  return <div className="sim-frame" data-kind="paste">
+    <SuiteBar kind="paste" language={language}/>
+    <div className="app-shell">
     <header className="topbar">
       <div className="brand-group"><div className="brand-symbol"><Cpu size={22}/></div>
         <div><div className="brand-title">DIE BONDING <span>LAB</span></div><div className="brand-subtitle">{t.brandSubtitle}</div></div>
@@ -447,5 +450,6 @@ export default function Simulator() {
       </aside>
     </main>
     <footer className="app-footer"><span><Zap size={12}/> EPOXY DIE ATTACH LAB</span><span>{t.footerProcess}</span><span>{t.footerModel}</span></footer>
+    </div>
   </div>;
 }

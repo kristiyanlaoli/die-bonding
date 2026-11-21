@@ -1,4 +1,4 @@
-import type { Locale } from '@/lib/simulation';
+import type { Locale } from '@/simulators/film/lib/simulation';
 
 // Vector drawings: no emoji font, remote images or network requests required.
 export default function LanguageFlag({ language }: { language: Locale }) {

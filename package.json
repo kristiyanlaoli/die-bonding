@@ -1,6 +1,6 @@
 {
-  "name": "die-bonding-paste-simulator",
-  "version": "1.6.0",
+  "name": "die-bonding-lab-unified",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

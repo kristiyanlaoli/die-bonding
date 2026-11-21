@@ -1,86 +1,77 @@
-# Die Bonding Lab — Paste-Type Epoxy Simulator
+# Die Bonding Lab — Unified 3D Simulation Suite
 
-A fully client-side, interactive 3D **educational model** of conventional face-up die attach using paste adhesive. Built with Next.js, React, Three.js / React Three Fiber, Drei, TypeScript, and CSS/Tailwind; suitable for Vercel.
+A single **Next.js 15 + React 19 + Three.js** website containing four interactive semiconductor die-bonding educational simulators, with a bilingual/multilingual start page, individual simulation workspaces, and shared navigation.
 
-## Features
+## What is included
 
-- Procedural, rotatable 3D assembly viewport with wafer tape, pick-up collet, substrate, epoxy dispenser, semiconductor die and curing enclosure
-- Six stages: **Dispense → Pick → Align → Place → Cure → Inspect**
-- Start, pause, resume, restart, previous/next stage, timeline scrubbing and 0.5–4× speed
-- Epoxy dispensing patterns: single dot, five-dot, X pattern
-- Approximate epoxy spreading, squeeze-out, fillet formation and cross-section view
-- Controls for die dimensions, substrate, viscosity, adhesive volume, nozzle gap, deposit imbalance, alignment offset, bond force, BLT target and curing parameters
-- Six preset scenarios: nominal, insufficient paste, excess paste, misalignment, tilt, potential voids
-- Derived BLT, adhesive coverage, fillet, placement error, tilt, and hypothetical void/delamination indicators
-- On-screen PASS/FAIL inspection verdict with every failed criterion explained; no CSV export
-- v1.4: viewport fills remaining laptop height; Engineering Explanation and Event Monitor default to closed and open on demand without resizing the desktop viewport. On phones the details expand inline.
-- Responsive layout and no external 3D models, databases or paid APIs
+| Route | Technology | Integrated source version | Key process features |
+| --- | --- | --- | --- |
+| `/simulators/paste` | Paste Adhesive (conventional die attach) | v1.6 | Epoxy dispense, die pickup, alignment, placement/spreading, curing, visual inspection |
+| `/simulators/film` | Die Attach Film (DAF) | v1.1 | Wafer thinning, film lamination, dicing, adhesive-backed die pickup and attachment, curing |
+| `/simulators/reflow` | Flip Chip Mass Reflow | v1.2 | **Wide-area flux spray**, flip, alignment, placement, mass reflow, flux cleaning, capillary underfill, curing |
+| `/simulators/tcb` | Flip Chip Thermo-Compression Bonding (TCB) | v1.2 | NCP dispense, flip, alignment, **continuous NCP spreading on contact**, local heat/force/dwell, cure |
 
-## Run locally
+The landing page is located at `/` and has a card for each process. All five pages support English (default), Bahasa Indonesia and Traditional Chinese (Taiwan). Use SVG flag controls to change languages. Language selection is passed by the `?lang=en|id|zhTW` URL parameter when navigating across pages.
 
-Requires Node.js **20.9+** (Node 22 recommended).
+All original parameter, animation, camera, timeline, and PASS/FAIL calculations remain in **separate per-process modules**, with no shared formulas accidentally replacing other simulators' logic.
+
+## Local development
+
+Requires Node.js 20+.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Visit http://localhost:3000.
+Open http://localhost:3000 in your browser.
 
-For a production build:
+For production:
 
 ```bash
+npm run typecheck
 npm run build
-npm start
+npm run start
 ```
 
-## Deploy on Vercel
+## Deploy to Vercel
 
-1. Unzip the project. Create a GitHub repository and commit these source files.
-2. In [Vercel](https://vercel.com/new), select **Add New → Project → Import Git Repository**.
-3. Vercel should recognize **Next.js** automatically. Leave framework and build settings at their defaults.
-4. Click **Deploy**. No environment variables or database connections are necessary.
-5. Open your Vercel-provided URL to use the interactive simulator.
+1. Create a GitHub repository using **the contents of this ZIP as the repository root**.
+2. Import that repository into Vercel as one Next.js project.
+3. Use the standard build command `npm run build` and framework preset **Next.js**.
+4. Deploy. The home page and the four `/simulators/...` routes are served by the **same Vercel project**.
 
-You can also deploy with `npx vercel` after signing in to the Vercel CLI.
+Do **not** deploy the four legacy ZIP projects separately when using this combined version.
 
-## Scientific scope / important limitations
+## Navigation and mobile behavior
 
-This is a **teaching visualization**, not a process-qualification tool. Adhesive spreading is represented by procedural geometry and a simplified volume-partition model. No Navier–Stokes solver, fluid/viscoelastic rheology, validated material kinetics, actual equipment controller, measured void metrology, or finite-element stress simulation is included.
+- Desktop: a thin simulation navigation bar above each workstation provides direct links to all four simulations.
+- Mobile: switch simulators from a compact dropdown; left panel stage navigation and 3D viewport remain usable.
+- The original **Process Scenarios** section remains **hidden at viewport widths up to 999 px**, consistent with the latest single-process projects.
+- Each process has its own independent local state; changing process navigates to another route and starts its simulation from its own default settings. This is intentional.
 
-- The die active surface remains **face up** throughout conventional epoxy bonding; this is not flip-chip solder paste.
-- For a die with area A in mm² and paste volume V in nL, an equivalent unspread film thickness is V/A µm. The model splits deposited volume between an estimated adhesive film and fillet for an internally consistent educational approximation. The visual thickness is intentionally exaggerated so the adhesive can be seen.
-- Coverage, voids, tilt, bleed and delamination risks use transparent, *unvalidated heuristic formulas* in `lib/simulation.ts`.
-- PASS/FAIL thresholds are demonstration defaults and **not** industry acceptance criteria; they must not be used to make real manufacturing decisions.
-- The thermal cure profiles are approximate educational presets, not qualified adhesive manufacturer's recipes. The alternative UV example is explicitly limited to a UV-compatible, edge-accessible adhesive; UV is **not** portrayed as curing through opaque silicon.
-- The animation runs on an accelerated illustrative time base, unrelated to physical machine cycle-time calibration.
-
-The topic sequence and manufacturing context are adapted from the supplied *Die Bonding and Bonding Equipment* training presentation: conventional paste die attach and its key inspection parameters.
-
-## Project structure
+## Structure
 
 ```
 app/
-  page.tsx                 Next.js page (client-side simulator)
-  layout.tsx               App HTML and metadata
-  globals.css              Industrial dashboard UI
+  page.tsx                  # 3-language landing selector
+  simulators/{paste,film,reflow,tcb}/page.tsx
+  globals.css               # original dark theme plus landing/nav styles
 components/
-  Simulator.tsx            UI, control system, timeline and inspection findings
-  SimulationScene.tsx      Procedural 3D wafer/collet/nozzle/die/paste and curing
-lib/
-  simulation.ts            Stage definitions, presets, dimensioned heuristic model
+  Landing.tsx               # home page
+  ProcessVisual.tsx         # compact educational vector process illustrations
+  SuiteBar.tsx              # navigation among simulators
+simulators/
+  paste/{components,lib}/   # original paste process
+  film/{components,lib}/    # original DAF process
+  reflow/{components,lib}/  # original mass reflow process
+  tcb/{components,lib}/     # original TCB process
 ```
 
-## Known tradeoffs
+## Important engineering limitation
 
-This project fetches normal npm dependencies during installation/deployment, but has no runtime dependency on remote asset servers. Interactive WebGL requires a browser with hardware acceleration. Because viewport geometry and adhesive models are procedural, the initial 3D view may take a few seconds to initialize on slow mobile devices.
+All simulations and PASS/FAIL metrics are **educational, qualitative/heuristic representations**, not calibrated predictive models or qualified manufacturing recipes. Do not use displayed thresholds to set production process parameters. Validate recipes against equipment and material supplier guidance.
 
-## Changes in v1.1
+## Build verification
 
-- Wafer frame, leadframe/laminate, pickup trajectory, and camera auto-layout now react to die width AND length, maintaining a physical clearance between the wafer ring and substrate even at maximum die sizes.
-- Removed CSV exports. Final inspection displays either **PASS** or **FAIL**, with a full list of failed checks and measured/estimated values against illustrative thresholds.
-- The verdict panel updates as inputs change and appears within the viewport on the inspection stage.
-
-### v1.6 — language selector
-
-English is the initial language on every fresh page load. Use the UK, Indonesian, or Taiwanese flag buttons in the header to switch languages. The buttons use inline SVG artwork rather than emoji, with accessible names and a visible active state. No remote image or font dependency is required.
+The merged project was statically inspected, with TypeScript/TSX parsing and import references checked. A complete `npm install`, production Next.js build, and browser-based WebGL testing were not possible in the available offline environment. The combined source is provided for normal Next.js/Vercel installation and testing.
